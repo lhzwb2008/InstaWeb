@@ -1,0 +1,6 @@
+dist
+node_modules
+webapp-output
+
+# Config files with sensitive information
+config.json

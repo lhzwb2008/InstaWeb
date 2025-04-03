@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGen API Tester</title>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --secondary-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --code-bg: #f5f5f5;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .endpoint-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .method {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin-right: 10px;
+            color: white;
+        }
+        
+        .method.get {
+            background-color: #61affe;
+        }
+        
+        .method.post {
+            background-color: #49cc90;
+        }
+        
+        .url {
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        
+        .description {
+            margin-bottom: 15px;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: monospace;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        .response-container {
+            margin-top: 15px;
+        }
+        
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .response-title {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .status.success {
+            background-color: rgba(46, 204, 113, 0.2);
+            color: var(--success-color);
+        }
+        
+        .status.error {
+            background-color: rgba(231, 76, 60, 0.2);
+            color: var(--error-color);
+        }
+        
+        .response-body {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .socket-events {
+            margin-top: 20px;
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            height: 200px;
+            overflow-y: auto;
+        }
+        
+        .clear-btn {
+            background-color: #6c757d;
+            margin-left: 10px;
+        }
+        
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        .config-info {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .config-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .config-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .config-value {
+            font-family: monospace;
+            background-color: var(--code-bg);
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebGen API Tester</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/api/demo" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">
+            Switch to Demo Page
+        </a>
+    </div>
+    
+    <div class="endpoint-container">
+        <h2>Socket.IO Configuration</h2>
+        <p>This API tester uses Socket.IO for real-time updates. To integrate Socket.IO in your own application, follow these steps:</p>
+        
+        <h3>1. Install Socket.IO Client</h3>
+        <p>Add the Socket.IO client library to your HTML:</p>
+        <pre class="response-body">&lt;script src="https://cdn.socket.io/4.6.0/socket.io.min.js" 
+  integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" 
+  crossorigin="anonymous"&gt;&lt;/script&gt;</pre>
+        
+        <h3>2. Initialize Socket.IO Connection</h3>
+        <pre class="response-body">// Initialize Socket.IO connection
+const socket = io(window.location.origin);
+
+// Listen for events
+socket.on('generation-progress', (data) => {
+  console.log('Generation progress:', data);
+});
+
+socket.on('validation-progress', (data) => {
+  console.log('Validation progress:', data);
+});
+
+socket.on('feedback-progress', (data) => {
+  console.log('Feedback progress:', data);
+});</pre>
+        
+        <p>For more information, refer to the <a href="https://socket.io/docs/v4/client-api/" target="_blank" style="color: var(--primary-color);">Socket.IO Client API documentation</a>.</p>
+    </div>
+    
+    <div class="config-info">
+        <div class="config-item">
+            <span class="config-label">Server URL:</span>
+            <span id="serverUrl" class="config-value">Loading...</span>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Access IP:</span>
+            <span id="accessIp" class="config-value">Loading...</span>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Server Port:</span>
+            <span id="serverPort" class="config-value">Loading...</span>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Session ID:</span>
+            <span id="sessionId" class="config-value">Not assigned</span>
+        </div>
+    </div>
+    
+    <!-- Create WebApp Endpoint -->
+    <div class="endpoint-container">
+        <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="url">/api/create</span>
+        </div>
+        <div class="description">Create a new WebApp based on a description</div>
+        
+        <textarea id="createRequest">{
+  "description": "一个简单的待办事项应用，可以添加、删除和标记任务完成"
+}</textarea>
+        
+        <button id="createBtn">Send Request</button>
+        <span id="createLoading" class="loading hidden"></span>
+        
+        <div class="response-container">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span id="createStatus" class="status hidden"></span>
+            </div>
+            <pre id="createResponse" class="response-body">// Response will appear here</pre>
+        </div>
+        
+        <div class="socket-events-container">
+            <div class="response-header">
+                <span class="response-title">Socket.IO Events (generation-progress)</span>
+                <button id="clearCreateEvents" class="clear-btn">Clear</button>
+            </div>
+            <pre id="createEvents" class="socket-events">// Socket.IO events will appear here</pre>
+        </div>
+    </div>
+    
+    <!-- Preview WebApp Endpoint -->
+    <div class="endpoint-container">
+        <div class="endpoint-header">
+            <span class="method get">GET</span>
+            <span class="url">/api/preview</span>
+        </div>
+        <div class="description">Get preview URL for the generated WebApp</div>
+        
+        <button id="previewBtn">Send Request</button>
+        <span id="previewLoading" class="loading hidden"></span>
+        
+        <div class="response-container">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span id="previewStatus" class="status hidden"></span>
+            </div>
+            <pre id="previewResponse" class="response-body">// Response will appear here</pre>
+        </div>
+    </div>
+    
+    <!-- Validate WebApp Endpoint -->
+    <div class="endpoint-container">
+        <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="url">/api/validate</span>
+        </div>
+        <div class="description">Validate the generated WebApp</div>
+        
+        <button id="validateBtn">Send Request</button>
+        <span id="validateLoading" class="loading hidden"></span>
+        
+        <div class="response-container">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span id="validateStatus" class="status hidden"></span>
+            </div>
+            <pre id="validateResponse" class="response-body">// Response will appear here</pre>
+        </div>
+        
+        <div class="socket-events-container">
+            <div class="response-header">
+                <span class="response-title">Socket.IO Events (validation-progress)</span>
+                <button id="clearValidateEvents" class="clear-btn">Clear</button>
+            </div>
+            <pre id="validateEvents" class="socket-events">// Socket.IO events will appear here</pre>
+        </div>
+    </div>
+    
+    <!-- Feedback Endpoint -->
+    <div class="endpoint-container">
+        <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="url">/api/feedback</span>
+        </div>
+        <div class="description">Process feedback and update the WebApp</div>
+        
+        <textarea id="feedbackRequest">{
+  "feedback": "请添加一个清除所有任务的按钮"
+}</textarea>
+        
+        <button id="feedbackBtn">Send Request</button>
+        <span id="feedbackLoading" class="loading hidden"></span>
+        
+        <div class="response-container">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span id="feedbackStatus" class="status hidden"></span>
+            </div>
+            <pre id="feedbackResponse" class="response-body">// Response will appear here</pre>
+        </div>
+        
+        <div class="socket-events-container">
+            <div class="response-header">
+                <span class="response-title">Socket.IO Events (feedback-progress)</span>
+                <button id="clearFeedbackEvents" class="clear-btn">Clear</button>
+            </div>
+            <pre id="feedbackEvents" class="socket-events">// Socket.IO events will appear here</pre>
+        </div>
+    </div>
+    
+    <!-- Config Endpoint -->
+    <div class="endpoint-container">
+        <div class="endpoint-header">
+            <span class="method get">GET</span>
+            <span class="url">/api/config</span>
+        </div>
+        <div class="description">Get server configuration</div>
+        
+        <button id="configBtn">Send Request</button>
+        <span id="configLoading" class="loading hidden"></span>
+        
+        <div class="response-container">
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                <span id="configStatus" class="status hidden"></span>
+            </div>
+            <pre id="configResponse" class="response-body">// Response will appear here</pre>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize variables
+        let serverUrl = window.location.origin;
+        let accessIp = window.location.hostname;
+        let serverPort = window.location.port || '3001';
+        let sessionId = localStorage.getItem('webgen-session-id') || null;
+        
+        // Initialize Socket.IO connection
+        let socket;
+        try {
+            socket = io(serverUrl);
+            
+            // Listen for session creation event
+            socket.on('session-created', (data) => {
+                console.log('Session created:', data);
+                sessionId = data.sessionId;
+                localStorage.setItem('webgen-session-id', sessionId);
+                
+                // Update UI with session ID
+                if (document.getElementById('sessionId')) {
+                    document.getElementById('sessionId').textContent = sessionId;
+                }
+            });
+        } catch (error) {
+            console.error('Error initializing Socket.IO:', error);
+            // Create a mock socket object to prevent errors
+            socket = {
+                on: function() {}
+            };
+        }
+        
+        // Function to fetch server configuration
+        async function fetchServerConfig() {
+            try {
+                const response = await fetch(`${serverUrl}/api/config`);
+                const config = await response.json();
+                
+                accessIp = config.accessIp;
+                serverPort = config.serverPort;
+                
+                // Update UI
+                document.getElementById('serverUrl').textContent = serverUrl;
+                document.getElementById('accessIp').textContent = accessIp;
+                document.getElementById('serverPort').textContent = serverPort;
+                
+                console.log(`Using configured access IP: ${accessIp}:${serverPort}`);
+            } catch (error) {
+                console.error('Error fetching server config:', error);
+                
+                // Update UI with defaults
+                document.getElementById('serverUrl').textContent = serverUrl;
+                document.getElementById('accessIp').textContent = accessIp;
+                document.getElementById('serverPort').textContent = serverPort;
+                
+                console.log(`Using default access IP: ${accessIp}:${serverPort}`);
+            }
+        }
+        
+        // Fetch server config on page load
+        fetchServerConfig();
+        
+        // Update session ID display if available
+        if (sessionId && document.getElementById('sessionId')) {
+            document.getElementById('sessionId').textContent = sessionId;
+        }
+        
+        // Set up Socket.IO event listeners
+        function setupSocketListeners() {
+            // Listen for generation progress events
+            socket.on('generation-progress', (data) => {
+                const eventsContainer = document.getElementById('createEvents');
+                eventsContainer.textContent += JSON.stringify(data, null, 2) + '\n\n';
+                eventsContainer.scrollTop = eventsContainer.scrollHeight;
+                
+                // If the data contains a sessionId, update our sessionId
+                if (data.data && data.data.sessionId) {
+                    sessionId = data.data.sessionId;
+                    localStorage.setItem('webgen-session-id', sessionId);
+                    if (document.getElementById('sessionId')) {
+                        document.getElementById('sessionId').textContent = sessionId;
+                    }
+                }
+            });
+            
+            // Listen for validation progress events
+            socket.on('validation-progress', (data) => {
+                const eventsContainer = document.getElementById('validateEvents');
+                eventsContainer.textContent += JSON.stringify(data, null, 2) + '\n\n';
+                eventsContainer.scrollTop = eventsContainer.scrollHeight;
+            });
+            
+            // Listen for feedback progress events
+            socket.on('feedback-progress', (data) => {
+                const eventsContainer = document.getElementById('feedbackEvents');
+                eventsContainer.textContent += JSON.stringify(data, null, 2) + '\n\n';
+                eventsContainer.scrollTop = eventsContainer.scrollHeight;
+            });
+        }
+        
+        // Initialize Socket.IO listeners
+        setupSocketListeners();
+        
+        // Helper function to handle API requests
+        async function makeApiRequest(endpoint, method, requestBody, responseElement, statusElement, loadingElement) {
+            try {
+                // Show loading animation
+                loadingElement.classList.remove('hidden');
+                
+                // Hide status
+                statusElement.classList.add('hidden');
+                
+                // Prepare request options
+                const options = {
+                    method: method,
+                    headers: {
+                        'X-Session-ID': sessionId || '',
+                        'X-Socket-ID': socket.id || ''
+                    }
+                };
+                
+                // Add request body for POST requests
+                if (method === 'POST' && requestBody) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = requestBody;
+                }
+                
+                // Make the request
+                const response = await fetch(`${serverUrl}${endpoint}`, options);
+                const result = await response.json();
+                
+                // Display the response
+                responseElement.textContent = JSON.stringify(result, null, 2);
+                
+                // Show success status
+                statusElement.textContent = `${response.status} ${response.statusText}`;
+                statusElement.className = 'status ' + (response.ok ? 'success' : 'error');
+                statusElement.classList.remove('hidden');
+                
+                return result;
+            } catch (error) {
+                // Display the error
+                responseElement.textContent = `Error: ${error.message}`;
+                
+                // Show error status
+                statusElement.textContent = 'Request Failed';
+                statusElement.className = 'status error';
+                statusElement.classList.remove('hidden');
+                
+                throw error;
+            } finally {
+                // Hide loading animation
+                loadingElement.classList.add('hidden');
+            }
+        }
+        
+        // Create WebApp endpoint
+        document.getElementById('createBtn').addEventListener('click', async () => {
+            const requestBody = document.getElementById('createRequest').value;
+            const responseElement = document.getElementById('createResponse');
+            const statusElement = document.getElementById('createStatus');
+            const loadingElement = document.getElementById('createLoading');
+            
+            // Clear events container
+            document.getElementById('createEvents').textContent = '';
+            
+            try {
+                await makeApiRequest(
+                    '/api/create',
+                    'POST',
+                    requestBody,
+                    responseElement,
+                    statusElement,
+                    loadingElement
+                );
+            } catch (error) {
+                console.error('Error creating WebApp:', error);
+            }
+        });
+        
+        // Preview WebApp endpoint
+        document.getElementById('previewBtn').addEventListener('click', async () => {
+            const responseElement = document.getElementById('previewResponse');
+            const statusElement = document.getElementById('previewStatus');
+            const loadingElement = document.getElementById('previewLoading');
+            
+            try {
+                const result = await makeApiRequest(
+                    '/api/preview',
+                    'GET',
+                    null,
+                    responseElement,
+                    statusElement,
+                    loadingElement
+                );
+                
+                // Open preview in new tab if successful
+                if (result.success && (result.previewUrl || result.fileUrl)) {
+                    window.open(result.previewUrl || result.fileUrl, '_blank');
+                }
+            } catch (error) {
+                console.error('Error getting preview URL:', error);
+            }
+        });
+        
+        // Validate WebApp endpoint
+        document.getElementById('validateBtn').addEventListener('click', async () => {
+            const responseElement = document.getElementById('validateResponse');
+            const statusElement = document.getElementById('validateStatus');
+            const loadingElement = document.getElementById('validateLoading');
+            
+            // Clear events container
+            document.getElementById('validateEvents').textContent = '';
+            
+            try {
+                await makeApiRequest(
+                    '/api/validate',
+                    'POST',
+                    null,
+                    responseElement,
+                    statusElement,
+                    loadingElement
+                );
+            } catch (error) {
+                console.error('Error validating WebApp:', error);
+            }
+        });
+        
+        // Feedback endpoint
+        document.getElementById('feedbackBtn').addEventListener('click', async () => {
+            const requestBody = document.getElementById('feedbackRequest').value;
+            const responseElement = document.getElementById('feedbackResponse');
+            const statusElement = document.getElementById('feedbackStatus');
+            const loadingElement = document.getElementById('feedbackLoading');
+            
+            // Clear events container
+            document.getElementById('feedbackEvents').textContent = '';
+            
+            try {
+                await makeApiRequest(
+                    '/api/feedback',
+                    'POST',
+                    requestBody,
+                    responseElement,
+                    statusElement,
+                    loadingElement
+                );
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+            }
+        });
+        
+        // Config endpoint
+        document.getElementById('configBtn').addEventListener('click', async () => {
+            const responseElement = document.getElementById('configResponse');
+            const statusElement = document.getElementById('configStatus');
+            const loadingElement = document.getElementById('configLoading');
+            
+            try {
+                await makeApiRequest(
+                    '/api/config',
+                    'GET',
+                    null,
+                    responseElement,
+                    statusElement,
+                    loadingElement
+                );
+            } catch (error) {
+                console.error('Error fetching config:', error);
+            }
+        });
+        
+        // Clear events buttons
+        document.getElementById('clearCreateEvents').addEventListener('click', () => {
+            document.getElementById('createEvents').textContent = '';
+        });
+        
+        document.getElementById('clearValidateEvents').addEventListener('click', () => {
+            document.getElementById('validateEvents').textContent = '';
+        });
+        
+        document.getElementById('clearFeedbackEvents').addEventListener('click', () => {
+            document.getElementById('feedbackEvents').textContent = '';
+        });
+    </script>
+</body>
+</html>

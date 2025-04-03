@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGen Demo</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --secondary-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .section:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #output, #feedbackOutput, #validateOutput {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .success {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #27ae60;
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .error {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #c0392b;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 5px;
+        }
+        
+        .tab {
+            padding: 12px 25px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 5px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .tab:hover:not(.active) {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--primary-color);
+        }
+        
+        .tab.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <h1>WebGen Demo</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="/api-test" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">
+            Switch to API Test Page
+        </a>
+    </div>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="create">Create</div>
+        <div class="tab" data-tab="preview">Preview</div>
+        <div class="tab" data-tab="feedback">Feedback</div>
+    </div>
+    
+    <div class="tab-content active" id="create-tab">
+        <div class="section">
+            <h2>Create WebApp</h2>
+            <textarea id="description" rows="5" placeholder="Describe the WebApp you want...">A simple calculator app with basic arithmetic operations</textarea>
+            <button id="createButton">Create WebApp</button>
+            <span id="createLoading" class="loading hidden"></span>
+            <div id="createStatus" class="status hidden"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Generation Progress</h2>
+            <pre id="output"></pre>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="preview-tab">
+        <div class="section">
+            <h2>Preview WebApp</h2>
+            <p>Click the button below to preview the generated WebApp.</p>
+            <button id="previewButton">Preview WebApp</button>
+            <span id="previewLoading" class="loading hidden"></span>
+            <div id="previewStatus" class="status hidden"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Validate WebApp</h2>
+            <p>Click the button below to validate the generated WebApp.</p>
+            <button id="validateButton">Validate WebApp</button>
+            <span id="validateLoading" class="loading hidden"></span>
+            <div id="validateStatus" class="status hidden"></div>
+            <pre id="validateOutput" class="hidden"></pre>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="feedback-tab">
+        <div class="section">
+            <h2>Provide Feedback</h2>
+            <textarea id="feedback" rows="5" placeholder="Provide feedback, e.g.: Please add a clear all calculations button">Please add a clear all calculations button</textarea>
+            <button id="feedbackButton">Submit Feedback</button>
+            <span id="feedbackLoading" class="loading hidden"></span>
+            <div id="feedbackStatus" class="status hidden"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Feedback Progress</h2>
+            <pre id="feedbackOutput"></pre>
+        </div>
+    </div>
+    
+    
+    <script>
+        // Get elements
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const output = document.getElementById('output');
+        const feedbackOutput = document.getElementById('feedbackOutput');
+        const validateOutput = document.getElementById('validateOutput');
+        
+        // Function to fetch server configuration
+        async function getServerConfig() {
+            try {
+                const response = await fetch('/api/config');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching server config:', error);
+                return { accessIp: window.location.hostname };
+            }
+        }
+        
+        // Set default server URL - use relative URL to automatically adapt to the current host
+        let serverUrl = localStorage.getItem('serverUrl') || window.location.origin;
+        let accessIp = window.location.hostname;
+        let serverPort = window.location.port || '3001';
+        
+// Initialize Socket.IO connection
+let socket = io(serverUrl);
+
+// Store session ID when received from server
+let sessionId = null;
+socket.on('session-created', (data) => {
+    console.log('Session created:', data.sessionId);
+    sessionId = data.sessionId;
+    // Store session ID in localStorage for persistence across page reloads
+    localStorage.setItem('sessionId', data.sessionId);
+});
+
+// Try to restore session ID from localStorage if available
+const storedSessionId = localStorage.getItem('sessionId');
+if (storedSessionId) {
+    sessionId = storedSessionId;
+    console.log('Restored session ID from storage:', sessionId);
+}
+        
+        // Fetch server configuration
+        async function initWithConfig() {
+            try {
+                const response = await fetch(`${serverUrl}/api/config`);
+                const config = await response.json();
+                accessIp = config.accessIp;
+                serverPort = config.serverPort;
+                console.log(`Using configured access IP: ${accessIp}:${serverPort}`);
+            } catch (error) {
+                console.error('Error fetching server config:', error);
+                console.log(`Using default access IP: ${accessIp}:${serverPort}`);
+            }
+        }
+        
+        // Initialize with server config
+        initWithConfig();
+        
+        // Switch tabs
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+        
+        
+        // Set up Socket.IO listeners
+        function setupSocketListeners() {
+            // Listen for generation progress
+            socket.on('generation-progress', (data) => {
+                console.log('Received generation-progress event:', data.type);
+                
+                if (data.type === 'data' || data.type === 'plan-data') {
+                    console.log('Received data:', data.data.substring(0, 20) + (data.data.length > 20 ? '...' : ''));
+                    output.textContent += data.data;
+                    output.scrollTop = output.scrollHeight;
+                } else if (data.type === 'status') {
+                    console.log('Received status:', data.data);
+                    output.textContent += '\n[Status] ' + data.data + '\n';
+                    output.scrollTop = output.scrollHeight;
+                } else if (data.type === 'plan-complete') {
+                    console.log('Received plan-complete');
+                    output.textContent += '\n[Plan Complete]\n';
+                    output.scrollTop = output.scrollHeight;
+                } else if (data.type === 'generation-complete') {
+                    console.log('Received generation-complete');
+                    output.textContent += '\n[Generation Complete]\n';
+                    output.scrollTop = output.scrollHeight;
+                    
+                    // Enable preview buttons
+                    document.getElementById('previewButton').disabled = false;
+                    document.getElementById('validateButton').disabled = false;
+                    
+                    // Show success message
+                    const createStatus = document.getElementById('createStatus');
+                    createStatus.textContent = 'WebApp successfully generated';
+                    createStatus.className = 'status success';
+                    
+                    // Hide loading animation
+                    document.getElementById('createLoading').classList.add('hidden');
+                } else if (data.type === 'error') {
+                    console.log('Received error:', data.data);
+                    output.textContent += '\n[Error] ' + data.data + '\n';
+                    output.scrollTop = output.scrollHeight;
+                    
+                    // Show error message
+                    const createStatus = document.getElementById('createStatus');
+                    createStatus.textContent = 'Generation failed: ' + data.data;
+                    createStatus.className = 'status error';
+                    
+                    // Hide loading animation
+                    document.getElementById('createLoading').classList.add('hidden');
+                }
+            });
+            
+            // Listen for validation progress
+            socket.on('validation-progress', (data) => {
+                if (data.type === 'status') {
+                    validateOutput.textContent = '[Status] ' + data.data + '\n';
+                    validateOutput.scrollTop = validateOutput.scrollHeight;
+                } else if (data.type === 'validation-complete') {
+                    validateOutput.textContent += JSON.stringify(data.data, null, 2);
+                    validateOutput.scrollTop = validateOutput.scrollHeight;
+                    
+                    // Show success or error message
+                    const validateStatus = document.getElementById('validateStatus');
+                    if (data.data.success) {
+                        validateStatus.textContent = 'WebApp validation successful';
+                        validateStatus.className = 'status success';
+                    } else {
+                        validateStatus.textContent = 'Validation failed: ' + data.data.message;
+                        validateStatus.className = 'status error';
+                    }
+                    
+                    // Hide loading animation
+                    document.getElementById('validateLoading').classList.add('hidden');
+                }
+            });
+            
+            // Listen for feedback progress
+            socket.on('feedback-progress', (data) => {
+                if (data.type === 'data') {
+                    feedbackOutput.textContent += data.data;
+                    feedbackOutput.scrollTop = feedbackOutput.scrollHeight;
+                } else if (data.type === 'status') {
+                    feedbackOutput.textContent += '\n[Status] ' + data.data + '\n';
+                    feedbackOutput.scrollTop = feedbackOutput.scrollHeight;
+                } else if (data.type === 'feedback-complete') {
+                    feedbackOutput.textContent += '\n[Feedback Processing Complete]\n';
+                    feedbackOutput.scrollTop = feedbackOutput.scrollHeight;
+                    
+                    // Show success message
+                    const feedbackStatus = document.getElementById('feedbackStatus');
+                    feedbackStatus.textContent = 'Feedback processed';
+                    feedbackStatus.className = 'status success';
+                    
+                    // Hide loading animation
+                    document.getElementById('feedbackLoading').classList.add('hidden');
+                } else if (data.type === 'error') {
+                    feedbackOutput.textContent += '\n[Error] ' + data.data + '\n';
+                    feedbackOutput.scrollTop = feedbackOutput.scrollHeight;
+                    
+                    // Show error message
+                    const feedbackStatus = document.getElementById('feedbackStatus');
+                    feedbackStatus.textContent = 'Processing failed: ' + data.data;
+                    feedbackStatus.className = 'status error';
+                    
+                    // Hide loading animation
+                    document.getElementById('feedbackLoading').classList.add('hidden');
+                }
+            });
+        }
+        
+        // Initialize Socket.IO listeners
+        setupSocketListeners();
+        
+// Create WebApp
+document.getElementById('createButton').addEventListener('click', async () => {
+    const description = document.getElementById('description').value;
+    
+    if (!description) {
+        alert('Please enter a WebApp description');
+        return;
+    }
+    
+    // Clear output
+    output.textContent = '';
+    
+    // Show loading animation
+    document.getElementById('createLoading').classList.remove('hidden');
+    
+    // Hide status message
+    document.getElementById('createStatus').className = 'status hidden';
+    
+    // Disable preview buttons
+    document.getElementById('previewButton').disabled = true;
+    document.getElementById('validateButton').disabled = true;
+    
+    try {
+        // Add headers for session tracking
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        // Add session ID if available
+        if (sessionId) {
+            headers['X-Session-ID'] = sessionId;
+        }
+        
+        // Add socket ID for direct messaging
+        headers['X-Socket-ID'] = socket.id;
+        
+        const response = await fetch(`${serverUrl}/api/create`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ description })
+        });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to create WebApp');
+                }
+            } catch (error) {
+                output.textContent += '\n[Error] ' + error.message + '\n';
+                
+                // Show error message
+                const createStatus = document.getElementById('createStatus');
+                createStatus.textContent = 'Request failed: ' + error.message;
+                createStatus.className = 'status error';
+                
+                // Hide loading animation
+                document.getElementById('createLoading').classList.add('hidden');
+            }
+        });
+        
+// Preview WebApp
+document.getElementById('previewButton').addEventListener('click', async () => {
+    // Show loading animation
+    document.getElementById('previewLoading').classList.remove('hidden');
+    
+    // Hide status message
+    document.getElementById('previewStatus').className = 'status hidden';
+    
+    try {
+        // Add headers for session tracking
+        const headers = {};
+        
+        // Add session ID if available
+        if (sessionId) {
+            headers['X-Session-ID'] = sessionId;
+        }
+        
+        // Add socket ID for direct messaging
+        headers['X-Socket-ID'] = socket.id;
+        
+        const response = await fetch(`${serverUrl}/api/preview`, {
+            headers: headers
+        });
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Use the HTTP URL with the configured IP if available
+                    const previewUrl = result.previewUrl || result.fileUrl;
+                    window.open(previewUrl, '_blank');
+                    
+                    // Show success message
+                    const previewStatus = document.getElementById('previewStatus');
+                    previewStatus.textContent = `Preview opened at ${previewUrl}`;
+                    previewStatus.className = 'status success';
+                } else {
+                    throw new Error(result.error || 'Failed to get preview URL');
+                }
+            } catch (error) {
+                // Show error message
+                const previewStatus = document.getElementById('previewStatus');
+                previewStatus.textContent = 'Preview failed: ' + error.message;
+                previewStatus.className = 'status error';
+            } finally {
+                // Hide loading animation
+                document.getElementById('previewLoading').classList.add('hidden');
+            }
+        });
+        
+// Validate WebApp
+document.getElementById('validateButton').addEventListener('click', async () => {
+    // Show loading animation
+    document.getElementById('validateLoading').classList.remove('hidden');
+    
+    // Show output area
+    validateOutput.classList.remove('hidden');
+    
+    // Clear output
+    validateOutput.textContent = '';
+    
+    // Hide status message
+    document.getElementById('validateStatus').className = 'status hidden';
+    
+    try {
+        // Add headers for session tracking
+        const headers = {};
+        
+        // Add session ID if available
+        if (sessionId) {
+            headers['X-Session-ID'] = sessionId;
+        }
+        
+        // Add socket ID for direct messaging
+        headers['X-Socket-ID'] = socket.id;
+        
+        const response = await fetch(`${serverUrl}/api/validate`, {
+            method: 'POST',
+            headers: headers
+        });
+                
+                await response.json();
+                // Results will be handled through Socket.IO events
+            } catch (error) {
+                validateOutput.textContent += '\n[Error] ' + error.message + '\n';
+                
+                // Show error message
+                const validateStatus = document.getElementById('validateStatus');
+                validateStatus.textContent = 'Request failed: ' + error.message;
+                validateStatus.className = 'status error';
+                
+                // Hide loading animation
+                document.getElementById('validateLoading').classList.add('hidden');
+            }
+        });
+        
+// Submit feedback
+document.getElementById('feedbackButton').addEventListener('click', async () => {
+    const feedback = document.getElementById('feedback').value;
+    
+    if (!feedback) {
+        alert('Please enter feedback');
+        return;
+    }
+    
+    // Clear output
+    feedbackOutput.textContent = '';
+    
+    // Show loading animation
+    document.getElementById('feedbackLoading').classList.remove('hidden');
+    
+    // Hide status message
+    document.getElementById('feedbackStatus').className = 'status hidden';
+    
+    try {
+        // Add headers for session tracking
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        // Add session ID if available
+        if (sessionId) {
+            headers['X-Session-ID'] = sessionId;
+        }
+        
+        // Add socket ID for direct messaging
+        headers['X-Socket-ID'] = socket.id;
+        
+        const response = await fetch(`${serverUrl}/api/feedback`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ feedback })
+        });
+                
+                await response.json();
+                // Results will be handled through Socket.IO events
+            } catch (error) {
+                feedbackOutput.textContent += '\n[Error] ' + error.message + '\n';
+                
+                // Show error message
+                const feedbackStatus = document.getElementById('feedbackStatus');
+                feedbackStatus.textContent = 'Request failed: ' + error.message;
+                feedbackStatus.className = 'status error';
+                
+                // Hide loading animation
+                document.getElementById('feedbackLoading').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
